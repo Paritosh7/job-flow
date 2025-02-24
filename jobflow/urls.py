@@ -16,7 +16,9 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from jobs.views import submit_job
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('submit/',submit_job)
 ]
