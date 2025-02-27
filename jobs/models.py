@@ -11,7 +11,7 @@ class Item(models.Model):
 
 
 class Job(models.Model):
-    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    job_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     job_name = models.CharField(max_length=20)
     status = models.CharField(max_length=20, default="pending")
     result = models.JSONField(blank=True, default=dict)

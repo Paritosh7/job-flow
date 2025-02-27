@@ -20,8 +20,8 @@ class ItemSerializer(serializers.Serializer):
         return instance
     
 class JobSerializer(serializers.Serializer):
-    id = serializers.UUIDField(read_only=True)
+    job_id = serializers.CharField(read_only=True, max_length=255)
     job_name = serializers.CharField(max_length = 20)
-    status = serializers.CharField(max_length= 20)
-    result = serializers.JSONField(required=False)
+    status = serializers.CharField(max_length= 20, read_only=True)
+    result = serializers.JSONField(required=False, read_only=True)
         
