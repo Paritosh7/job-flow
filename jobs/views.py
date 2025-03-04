@@ -9,12 +9,28 @@ from rest_framework.parsers import JSONParser
 from jobs.models import Item, Job
 from jobs.serializers import ItemSerializer, JobSerializer
 from django.db import transaction
+from rest_framework.renderers import JSONRenderer
+from django.core.cache import cache
+import logging
+
+logger = logging.getLogger(__name__)
+
+def get_cache_key(pk):
+    return f'item_{pk}'
 
 @csrf_exempt
 def item_detail(request,  pk):
     """
     Retrieve, update or delete item
     """
+    
+    cache_key = get_cache_key(pk=pk)
+    cached_item = cache.get(cache_key)
+    
+    if cached_item and request.method == 'GET':
+        logger.info(f"cache hit for item with id {cached_item}")
+        return JsonResponse(cached_item)
+    
     try:
         item = Item.objects.get(pk = pk)
     except Item.DoesNotExist:
@@ -22,6 +38,7 @@ def item_detail(request,  pk):
     
     if request.method == 'GET':
         serializer = ItemSerializer(item)
+        cache.set(cache_key, serializer.data)
         return JsonResponse(serializer.data)
     
     if request.method == 'PUT':
@@ -30,13 +47,19 @@ def item_detail(request,  pk):
         
         if serializer.is_valid():
             serializer.save()
+            
+            cache.set(cache_key, serializer.data)
+            
             return JsonResponse(serializer.data)
 
         return JsonResponse(serializer.errors, status=400)
 
     if request.method == 'DELETE':
-        item.delete()
-        return HttpResponse(status=204)
+        deletion_detail = item.delete()
+        
+        cache.delete(cache_key)
+        # safe false as not returning ket value pair and JsonResponse expects that.
+        return JsonResponse(deletion_detail, status=204, safe= False)
     
 @csrf_exempt
 def item_list(request):
@@ -52,7 +75,8 @@ def item_list(request):
         data = JSONParser().parse(request)
         serializer = ItemSerializer(data = data)
         if serializer.is_valid():
-            serializer.save()
+            item = serializer.save()
+            cache.set(get_cache_key(item.id), serializer.data)
             return JsonResponse(serializer.data, status=201)
         return JsonResponse(serializer.errors, status=400)
     
