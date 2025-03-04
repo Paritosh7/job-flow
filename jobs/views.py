@@ -12,6 +12,7 @@ from django.db import transaction
 from rest_framework.renderers import JSONRenderer
 from django.core.cache import cache
 import logging
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ def item_detail(request,  pk):
     cached_item = cache.get(cache_key)
     
     if cached_item and request.method == 'GET':
-        logger.info(f"cache hit for item with id {cached_item}")
+        logger.debug(f"cache hit for item with id {cached_item} and {cache_key}")
         return JsonResponse(cached_item)
     
     try:
@@ -37,11 +38,12 @@ def item_detail(request,  pk):
         return HttpResponse(status=404)
     
     if request.method == 'GET':
+        logger.debug(f"database hit for GET with id {cache_key}")
         serializer = ItemSerializer(item)
-        cache.set(cache_key, serializer.data)
         return JsonResponse(serializer.data)
     
     if request.method == 'PUT':
+        logger.debug(f"PUT request for id {pk}")
         data = JSONParser().parse(request)
         serializer = ItemSerializer(item, data=data)
         
@@ -49,22 +51,29 @@ def item_detail(request,  pk):
             serializer.save()
             
             cache.set(cache_key, serializer.data)
+            cache.expire_at(cache_key, datetime.now() + timedelta(hours=1))
+            logger.debug(f"Cache set for id {cache_key}")
             
             return JsonResponse(serializer.data)
 
         return JsonResponse(serializer.errors, status=400)
 
     if request.method == 'DELETE':
+        logger.debug(f"delete request for id {pk}")
         deletion_detail = item.delete()
         
-        cache.delete(cache_key)
-        # safe false as not returning ket value pair and JsonResponse expects that.
+        if cache.has_key(cache_key):
+            cache.delete(cache_key)
+            logger.debug(f"cache deleted for id {cache_key}")
+        # safe false, as not returning key value pair and JsonResponse expects that.
         return JsonResponse(deletion_detail, status=204, safe= False)
     
 @csrf_exempt
 def item_list(request):
     
     if request.method == 'GET':
+        logger.debug(f"GET request to list all items")
+        
         items = Item.objects.all()
         serializer = ItemSerializer(items, many=True)
         return JsonResponse(serializer.data, safe=False)
@@ -74,9 +83,15 @@ def item_list(request):
     if request.method == 'POST':
         data = JSONParser().parse(request)
         serializer = ItemSerializer(data = data)
+        
+        logger.debug(f"POST request with data : {serializer.data}")
         if serializer.is_valid():
             item = serializer.save()
-            cache.set(get_cache_key(item.id), serializer.data)
+            cache_key = get_cache_key(item.id)
+            
+            cache.set(cache_key, serializer.data)
+            cache.expire_at(cache_key, datetime.now() + timedelta(hours=1))
+
             return JsonResponse(serializer.data, status=201)
         return JsonResponse(serializer.errors, status=400)
     
