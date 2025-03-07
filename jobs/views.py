@@ -123,6 +123,6 @@ def submit_job(request):
             
             async_job.delay_on_commit(job.job_id)
             
-            return JsonResponse({"job_id": job.job_id, "job_name":job_name, "status": "pending"}, status=status.HTTP_201_CREATED)
+            return JsonResponse({"job_id": job.job_id, "job_name":job_name, "status": job.status}, status=status.HTTP_201_CREATED)
         
         return JsonResponse(serializer.errors, status = 400)
