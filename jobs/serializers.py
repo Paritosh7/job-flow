@@ -1,27 +1,15 @@
 from rest_framework import serializers
-from jobs.models import Item
+from jobs.models import Item, Job
 
-class ItemSerializer(serializers.Serializer):
-    id = serializers.UUIDField(read_only=True)
-    item_name = serializers.CharField(max_length = 50)
-
-    def create(self, validated_data):
-        
-        """Create a new item given the item_name
-
-        Returns a new item instance given the validated_data
-        """
-        return Item.objects.create(**validated_data)
+class ItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Item
+        fields = ['id', 'item_name', 'created_at', 'modified_at']
+        read_only_fields = ['id', 'created_at', 'modified_at']
     
-    def update(self, instance, validated_data):
-        
-        instance.item_name = validated_data.get('item_name', instance.item_name)
-        instance.save()
-        return instance
-    
-class JobSerializer(serializers.Serializer):
-    job_id = serializers.CharField(read_only=True, max_length=255)
-    job_name = serializers.CharField(max_length = 20)
-    status = serializers.CharField(max_length= 20, read_only=True)
-    result = serializers.JSONField(required=False, read_only=True)
+class JobSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Job
+        fields = ['job_id', 'job_name','status', 'result', 'created_at', 'modified_at']
+        read_only_fields = ['job_id', 'status', 'result', 'created_at', 'modified_at']
         

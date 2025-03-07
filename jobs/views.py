@@ -13,6 +13,7 @@ from rest_framework.renderers import JSONRenderer
 from django.core.cache import cache
 import logging
 from datetime import datetime, timedelta
+from rest_framework.exceptions import ParseError
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +50,8 @@ def item_detail(request,  pk):
         
         if serializer.is_valid():
             serializer.save()
-            
-            cache.set(cache_key, serializer.data)
+                  
+            cache.set(cache_key, serializer.validated_data)
             cache.expire_at(cache_key, datetime.now() + timedelta(hours=1))
             logger.debug(f"Cache set for id {cache_key}")
             
@@ -81,18 +82,26 @@ def item_list(request):
     
     
     if request.method == 'POST':
-        data = JSONParser().parse(request)
-        serializer = ItemSerializer(data = data)
+        # if request.body is empty JSONParser().parse(request) raises exception
         
-        logger.debug(f"POST request with data : {serializer.data}")
-        if serializer.is_valid():
-            item = serializer.save()
-            cache_key = get_cache_key(item.id)
+        try:
+            data = JSONParser().parse(request)
+            serializer = ItemSerializer(data = data)
             
-            cache.set(cache_key, serializer.data)
-            cache.expire_at(cache_key, datetime.now() + timedelta(hours=1))
+            if serializer.is_valid():
+                logger.debug(f"POST request with data : {serializer.validated_data}")
+                item = serializer.save()
+                cache_key = get_cache_key(item.id)
+                
+                cache.set(cache_key, serializer.validated_data)
+                cache.expire_at(cache_key, datetime.now() + timedelta(hours=1))
 
-            return JsonResponse(serializer.data, status=201)
+                return JsonResponse(serializer.validated_data, status=201)
+        
+        except ParseError as e:
+            return JsonResponse({"error": "Empty JSON body"}, status=400)
+            
+        
         return JsonResponse(serializer.errors, status=400)
     
 
