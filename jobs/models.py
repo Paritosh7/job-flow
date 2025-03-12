@@ -17,4 +17,5 @@ class Job(models.Model):
     result = models.JSONField(blank=True, default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
+
     
