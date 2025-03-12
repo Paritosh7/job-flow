@@ -29,9 +29,7 @@ class SubmitJob(APIView):
         serialiser = JobSerializer(data=request.data)
         if serialiser.is_valid():
             
-            job_name = serialiser.data.get('job_name')
-            
-            job = Job.objects.create(job_name=job_name, status="pending")
+            job = serialiser.save(status="pending")
             
             async_job.delay_on_commit(job.job_id)
             

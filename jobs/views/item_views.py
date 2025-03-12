@@ -101,36 +101,3 @@ class ItemList(APIView):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
-        
-    
-
-@csrf_exempt
-def get_job_result(request, pk):
-    
-    try:
-        job_item = Job.objects.get(pk=pk)
-    except Job.DoesNotExist:
-        return HttpResponse(status=404)
-    
-    if request.method == 'GET':
-        serializer = JobSerializer(job_item)
-        return JsonResponse(serializer.data)
-
-
-@csrf_exempt
-@transaction.atomic
-def submit_job(request):
-    
-    if request.method == 'POST':
-        data = JSONParser().parse(request)
-        serializer = JobSerializer(data = data)
-        if serializer.is_valid():
-            job_name = serializer.validated_data['job_name']
-            
-            job = Job.objects.create(job_name=job_name, status="pending")
-            
-            async_job.delay_on_commit(job.job_id)
-            
-            return JsonResponse({"job_id": job.job_id, "job_name":job_name, "status": job.status}, status=status.HTTP_201_CREATED)
-        
-        return JsonResponse(serializer.errors, status = 400)
